@@ -1,0 +1,19 @@
+CC = x86_64-elf-gcc
+LD = x86_64-elf-ld
+
+CFLAGS = -Wall -Wextra -O3 -ffreestanding -mno-red-zone -fno-exceptions -fno-rtti
+LDFLAGS = -T linker.ld -nostdlib
+
+all: winux.bin
+
+winux.bin: kernel.o
+	$(LD) $(LDFLAGS) kernel.o -o winux.bin
+
+kernel.o: kernel.c io.h paging.h vfs.h vga.h
+	$(CC) $(CFLAGS) -c kernel.c -o kernel.o
+
+run: winux.bin
+	qemu-system-x86_64 -kernel winux.bin
+
+clean:
+	rm -f *.o *.bin
