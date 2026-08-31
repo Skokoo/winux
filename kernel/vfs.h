@@ -1,42 +1,84 @@
 #ifndef VFS_H
 #define VFS_H
 
+#include "io.h"
+
 struct file {
     char name[32];
-    unsigned char* data;
+    unsigned int cluster;
     unsigned int size;
+    unsigned char is_dir;
 };
 
 struct vfs_root {
-    struct file files[16];
+    struct file files[64];
     unsigned int file_count;
 };
 
 struct vfs_root root;
 
-__attribute__((aligned(4096))) unsigned char ramdisk_zone[16 * 4096];
-
-static inline void smem(unsigned char* d, const char* s, unsigned int len) {
-    for (unsigned int i = 0; i < len; i++) {
-        d[i] = (unsigned char)s[i];
-    }
+static inline void ata_wait(void) {
+    inb(0x1F7); inb(0x1F7); inb(0x1F7); inb(0x1F7);
 }
 
-int storage_write(const char* filename, const char* content, unsigned int len) {
-    if (root.file_count >= 16 || len > 4096) return -1;
-    unsigned int offset = root.file_count * 4096;
-    unsigned char* target_zone = &ramdisk_zone[offset];
-    unsigned int name_len = 0;
-    while (filename[name_len] && name_len < 31) {
-        root.files[root.file_count].name[name_len] = filename[name_len];
-        name_len++;
+static inline void ata_read_sector(unsigned int lba, unsigned short* buf) {
+    outb(0x1F6, 0xE0 | ((lba >> 24) & 0x0F));
+    outb(0x1F2, 1);
+    outb(0x1F3, (unsigned char)lba);
+    outb(0x1F4, (unsigned char)(lba >> 8));
+    outb(0x1F5, (unsigned char)(lba >> 16));
+    outb(0x1F7, 0x20);
+
+    while (!(inb(0x1F7) & 0x08)) {
+        __asm__ volatile ("pause");
     }
-    root.files[root.file_count].name[name_len] = '\0';
-    smem(target_zone, content, len);
-    root.files[root.file_count].data = target_zone;
-    root.files[root.file_count].size = len;
-    root.file_count++;
-    return 0;
+
+    for (int i = 0; i < 256; i++) {
+        buf[i] = inb(0x1F0) | (inb(0x1F0) << 8);
+    }
+    ata_wait();
+}
+
+int storage_explore(unsigned int lba_root_dir) {
+    unsigned short sector_buf[256];
+    unsigned char* byte_buf = (unsigned char*)sector_buf;
+    
+    root.file_count = 0;
+    ata_read_sector(lba_root_dir, sector_buf);
+
+    for (int offset = 0; offset < 512; offset += 32) {
+        if (byte_buf[offset] == 0x00) break;
+        if (byte_buf[offset] == 0xE5) continue;
+        if (byte_buf[offset + 11] == 0x0F) continue;
+
+        struct file* f = &root.files[root.file_count];
+        
+        int name_idx = 0;
+        for (int i = 0; i < 8; i++) {
+            if (byte_buf[offset + i] != ' ') {
+                f->name[name_idx++] = byte_buf[offset + i];
+            }
+        }
+        
+        if (!(byte_buf[offset + 11] & 0x10)) {
+            f->name[name_idx++] = '.';
+            for (int i = 0; i < 3; i++) {
+                if (byte_buf[offset + 8 + i] != ' ') {
+                    f->name[name_idx++] = byte_buf[offset + 8 + i];
+                }
+            }
+        }
+        f->name[name_idx] = '\0';
+
+        f->is_dir = (byte_buf[offset + 11] & 0x10) ? 1 : 0;
+        f->cluster = byte_buf[offset + 26] | (byte_buf[offset + 27] << 8);
+        f->size = byte_buf[offset + 28] | (byte_buf[offset + 29] << 8) | 
+                  (byte_buf[offset + 30] << 16) | (byte_buf[offset + 31] << 24);
+
+        root.file_count++;
+        if (root.file_count >= 64) break;
+    }
+    return root.file_count;
 }
 
 #endif
