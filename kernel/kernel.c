@@ -19,14 +19,11 @@
 
 */
 
-__attribute__((section(".text")))
-const unsigned int multiboot2_header[] = {
-    0xE85250D6,
-    0x00000000,
-    24,
-    -(0xE85250D6 + 0x00000000 + 24),
-    0x00000000,
-    0x00000008
+__attribute__((section(".text"))) 
+const unsigned int multiboot_header[] = {
+    0x1BADB002,                 
+    0x00000003,                 
+    -(0x1BADB002 + 0x00000003)  
 };
 
 #include "io.h"
