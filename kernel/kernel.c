@@ -1,0 +1,96 @@
+#include "io.h"
+#include "paging.h"
+#include "vfs.h"
+#include "vga.h"
+
+volatile unsigned char proc_active = 0;
+
+void kmain(void) {
+    init();
+    volatile unsigned short* vga_b = (volatile unsigned short*)VGA;
+
+    unsigned long long* b64 = (unsigned long long*)VGA;
+    unsigned long long cv = 0x0720072007200720ULL;
+    for (int i = 0; i < 500; i++) b64[i] = cv;
+
+    root.file_count = 0;
+
+    pr("yey, kernel.");
+    newline();
+    newline();
+    pr("> ");
+
+    unsigned char last = 0;
+    unsigned char ctrl_pressed = 0;
+    unsigned char shift_pressed = 0;
+    unsigned char alt_pressed = 0;
+    unsigned long long loop_counter = 0;
+
+    static const char m[128] = {
+        [0x1E] = 'A', [0x30] = 'B', [0x2E] = 'C', [0x20] = 'D', [0x12] = 'E',
+        [0x21] = 'F', [0x22] = 'G', [0x23] = 'H', [0x17] = 'I', [0x24] = 'J',
+        [0x25] = 'K', [0x26] = 'L', [0x32] = 'M', [0x31] = 'N', [0x18] = 'O',
+        [0x19] = 'P', [0x10] = 'Q', [0x13] = 'R', [0x1F] = 'S', [0x14] = 'T',
+        [0x16] = 'U', [0x2F] = 'V', [0x11] = 'W', [0x2D] = 'X', [0x15] = 'Y',
+        [0x2C] = 'Z', [0x39] = ' '
+    };
+
+    while (1) {
+        unsigned char c = inb(0x60);
+        if (c != last) {
+            last = c;
+
+            if (c == 0x1D) ctrl_pressed = 1;
+            else if (c == 0x9D) ctrl_pressed = 0;
+            else if (c == 0x2A || c == 0x36) shift_pressed = 1;
+            else if (c == 0xAA || c == 0xB6) shift_pressed = 0;
+            else if (c == 0x38) alt_pressed = 1;
+            else if (c == 0xB8) alt_pressed = 0;
+
+            if (!(c & 0x80)) {
+                if (ctrl_pressed && c == 0x2E) {
+                    if (proc_active) {
+                        proc_active = 0;
+                        newline();
+                        pr("[sig] Keyboard Interrupted.");
+                        newline();
+                        pr("> ");
+                    }
+                    continue;
+                }             
+
+                if (!proc_active) {
+                    if (c == 0x0E) {
+                        if (p > 0) {
+                            p--;
+                            vga_b[p] = 0x0720;
+                            mv(p);
+                        }
+                        continue;
+                    }
+
+                    if (c < 128) {
+                        char tgt = m[c];
+                        if (tgt) {
+                            if ((unsigned int)p >= 2000) p = 0;
+                            if (!shift_pressed && tgt >= 'A' && tgt <= 'Z') {
+                                tgt = tgt + 32;
+                            }
+                            vga_b[p++] = (COL << 8) | (unsigned char)tgt;
+                            mv(p);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (proc_active) {
+            loop_counter++;
+            if (loop_counter % 5000000 == 0) {
+                pr(".");
+            }
+        }
+
+        __asm__ volatile ("pause");
+    }
+}
