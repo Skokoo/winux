@@ -1,4 +1,4 @@
-CC = clang -target i386-pc-elf
+CC = clang -target x86_64-pc-elf
 LD = ld.lld
 CFLAGS = -Wall -Wextra -Werror -O3 -ffreestanding -mno-red-zone -fno-exceptions
 LDFLAGS = -T linker.ld -nostdlib
