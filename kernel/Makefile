@@ -1,7 +1,7 @@
 CC = x86_64-elf-gcc
 LD = x86_64-elf-ld
 
-CFLAGS = -Wall -Wextra -O3 -ffreestanding -mno-red-zone -fno-exceptions -fno-rtti
+CFLAGS = -Wall -Wextra -Werror -O3 -ffreestanding -mno-red-zone -fno-exceptions
 LDFLAGS = -T linker.ld -nostdlib
 
 all: winux.bin
