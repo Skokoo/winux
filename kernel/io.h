@@ -37,22 +37,21 @@ static inline void io_wait(void) {
 }
 
 static inline void mcpy64(void* dest, const void* src, unsigned int count) {
-    __asm__ volatile (
-        "cld\n\t"
-        "rep movsq"
-        : "+D"(dest), "+S"(src), "+c"(count)
-        :
-        : "memory"
-    );
+    __asm__ volatile ("cld\n\t" "rep movsq" : "+D"(dest), "+S"(src), "+c"(count) :: "memory");
 }
 
 static inline void mset64(void* dest, unsigned long long val, unsigned int count) {
+    unsigned int v_low = (unsigned int)val;
+    unsigned int v_high = (unsigned int)(val >> 32);
     __asm__ volatile (
         "cld\n\t"
-        "rep stosq"
+        "mov %2, %%eax\n\t"
+        "mov %3, %%edx\n\t"
+        ".code32\n\t"
+        "rep stosl\n\t"
         : "+D"(dest), "+c"(count)
-        : "a"(val)
-        : "memory"
+        : "r"(v_low), "r"(v_high)
+        : "eax", "edx", "memory"
     );
 }
 
