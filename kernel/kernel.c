@@ -44,7 +44,6 @@ void kmain(void) {
     unsigned char last = 0;
     unsigned char ctrl_pressed = 0;
     unsigned char shift_pressed = 0;
-    unsigned char alt_pressed = 0;
     unsigned long long loop_counter = 0;
 
     static const char m[128] = {
@@ -65,8 +64,6 @@ void kmain(void) {
             else if (c == 0x9D) ctrl_pressed = 0;
             else if (c == 0x2A || c == 0x36) shift_pressed = 1;
             else if (c == 0xAA || c == 0xB6) shift_pressed = 0;
-            else if (c == 0x38) alt_pressed = 1;
-            else if (c == 0xB8) alt_pressed = 0;
 
             if (!(c & 0x80)) {
                 if (ctrl_pressed && c == 0x2E) {
