@@ -59,13 +59,15 @@ void kmain(void) {
                     continue;
                 }             
 
+                if (c == 0x1C) {
+                    newline();
+                    pr("> ");
+                    continue;
+                }
+
                 if (!proc_active) {
                     if (c == 0x0E) {
-                        if (p > 0) {
-                            p--;
-                            vga_b[p] = 0x0720;
-                            mv(p);
-                        }
+                        vga_backspace();
                         continue;
                     }
 
@@ -76,7 +78,7 @@ void kmain(void) {
                             if (!shift_pressed && tgt >= 'A' && tgt <= 'Z') {
                                 tgt = tgt + 32;
                             }
-                            vga_b[p++] = (COL << 8) | (unsigned char)tgt;
+                            vga_b[p++] = (current_color << 8) | (unsigned char)tgt;
                             mv(p);
                         }
                     }
