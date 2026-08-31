@@ -72,8 +72,10 @@ void init(void) {
         "or $0x00000900, %%eax\n\t" 
         "wrmsr\n\t"
         "mov %%cr0, %%rax\n\t"
-        "and $0x9FFFFFFF, %%rax\n\t" 
-        "or $0x80010023, %%rax\n\t" 
+        "movabs $0xFFFFFFFF9FFFFFFF, %%rcx\n\t"
+        "and %%rcx, %%rax\n\t"
+        "movabs $0x80010023, %%rcx\n\t"
+        "or %%rcx, %%rax\n\t"
         "mov %%rax, %%cr0"
         ::: "rax", "rcx", "rdx", "memory"
     );
