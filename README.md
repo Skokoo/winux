@@ -1,2 +1,2 @@
-# yey-kernel
+# winux
 yes
