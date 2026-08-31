@@ -7,7 +7,8 @@ LDFLAGS = -T linker.ld -nostdlib
 all: winux.bin
 
 winux.bin: kernel.o
-	$(LD) $(LDFLAGS) kernel.o -o winux.bin
+	$(LD) $(LDFLAGS) kernel.o -o winux.elf
+	llvm-objcopy -O binary winux.elf winux.bin
 
 kernel.o: kernel.c io.h paging.h vfs.h vga.h
 	$(CC) $(CFLAGS) -c kernel.c -o kernel.o
