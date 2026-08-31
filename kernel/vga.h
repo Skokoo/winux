@@ -4,9 +4,11 @@
 #include "io.h"
 
 #define VGA 0xB8000
-#define COL 0x0A
 
 int p = 0;
+unsigned char current_color = 0x0A;
+unsigned char ansi_state = 0;
+unsigned int ansi_num = 0;
 
 void mv(int pos) {
     if ((unsigned int)pos >= 2000) return;
@@ -26,24 +28,6 @@ void scroll(void) {
     p = 24 * 80;
 }
 
-void pr(const char* s) {
-    volatile unsigned short* b = (volatile unsigned short*)VGA;
-    unsigned short attr = COL << 8;
-    int cur = p;
-
-    while (*s) {
-        if ((unsigned int)cur >= 2000) {
-            p = cur;
-            scroll();
-            cur = p;
-            b = (volatile unsigned short*)VGA;
-        }
-        b[cur++] = attr | (unsigned char)*s++;
-    }
-    p = cur;
-    mv(p);
-}
-
 void newline(void) {
     p = ((p / 80) + 1) * 80;
     if (p >= 2000) {
@@ -59,6 +43,55 @@ void vga_backspace(void) {
         b[p] = 0x0700;
         mv(p);
     }
+}
+
+void pr(const char* s) {
+    volatile unsigned short* b = (volatile unsigned short*)VGA;
+    int cur = p;
+
+    while (*s) {
+        unsigned char c = (unsigned char)*s++;
+
+        if (ansi_state == 0) {
+            if (c == 0x1B) {
+                ansi_state = 1;
+                continue;
+            }
+            if ((unsigned int)cur >= 2000) {
+                p = cur;
+                scroll();
+                cur = p;
+                b = (volatile unsigned short*)VGA;
+            }
+            b[cur++] = (current_color << 8) | c;
+        } else if (ansi_state == 1) {
+            if (c == '[') {
+                ansi_state = 2;
+                ansi_num = 0;
+            } else {
+                ansi_state = 0;
+            }
+        } else if (ansi_state == 2) {
+            if (c >= '0' && c <= '9') {
+                ansi_num = (ansi_num * 10) + (c - '0');
+            } else if (c == 'm') {
+                if (ansi_num == 0) current_color = 0x07;
+                else if (ansi_num == 30) current_color = 0x00;
+                else if (ansi_num == 31) current_color = 0x04;
+                else if (ansi_num == 32) current_color = 0x02;
+                else if (ansi_num == 33) current_color = 0x06;
+                else if (ansi_num == 34) current_color = 0x01;
+                else if (ansi_num == 35) current_color = 0x05;
+                else if (ansi_num == 36) current_color = 0x03;
+                else if (ansi_num == 37) current_color = 0x07;
+                ansi_state = 0;
+            } else {
+                ansi_state = 0;
+            }
+        }
+    }
+    p = cur;
+    mv(p);
 }
 
 #endif
