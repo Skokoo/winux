@@ -33,7 +33,7 @@ void init(void) {
         "rep stosq"
         :
         : "D"(l4)
-        : "rax", "rcx", "di", "memory"
+        : "rax", "rcx", "memory"
     );
     __asm__ volatile (
         "xor %%rax, %%rax\n\t"
@@ -41,7 +41,7 @@ void init(void) {
         "rep stosq"
         :
         : "D"(dp)
-        : "rax", "rcx", "di", "memory"
+        : "rax", "rcx", "memory"
     );
     __asm__ volatile (
         "xor %%rax, %%rax\n\t"
@@ -49,7 +49,7 @@ void init(void) {
         "rep stosq"
         :
         : "D"(pd)
-        : "rax", "rcx", "di", "memory"
+        : "rax", "rcx", "memory"
     );
 
     l4[0] = (((unsigned long long)dp) & 0x000FFFFFFFFFF000ULL) | 0x03ULL;
